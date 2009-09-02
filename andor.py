@@ -17,6 +17,7 @@
 from ctypes import *
 import time
 from PIL import Image
+import sys
 
 """Andor class which is meant to provide the Python version of the same
    functions that are defined in the Andor's SDK. Since Python does not
@@ -37,33 +38,49 @@ class Andor:
         self.width = cw.value
         self.height = cw.value
         self.temperature = None
+        self.set_T = None
         self.gain = None
         self.gainRange = None
         self.status = None
+        self.verbosity = False
+        self.preampgain = 0
     
+    def verbose(self, error, function=''):
+        if self.verbosity is True:
+            print "[%s]: %s" %(function, error)
+
+    def SetVerbose(self, state=True):
+        self.verbose = state
+
     def ShutDown(self):
         error = self.dll.ShutDown()
+        self.verbose(ERROR_CODE[error], sys._getframe().f_code.co_name)
         return ERROR_CODE[error]
 
     def SetReadMode(self, mode):
         error = self.dll.SetReadMode(mode)
+        self.verbose(ERROR_CODE[error], sys._getframe().f_code.co_name)
         return ERROR_CODE[error]
 
     def SetAcquisitionMode(self, mode):
         error = self.dll.SetAcquisitionMode(mode)
+        self.verbose(ERROR_CODE[error], sys._getframe().f_code.co_name)
         return ERROR_CODE[error]
 
     def SetShutter(self,typ,mode,closingtime,openingtime):
         error = self.dll.SetShutter(typ,mode,closingtime,openingtime)
+        self.verbose(ERROR_CODE[error], sys._getframe().f_code.co_name)
         return ERROR_CODE[error]
 
     def SetImage(self,hbin,vbin,hstart,hend,vstart,vend):
         error = self.dll.SetImage(hbin,vbin,hstart,hend,vstart,vend)
+        self.verbose(ERROR_CODE[error], sys._getframe().f_code.co_name)
         return ERROR_CODE[error]
 
     def StartAcquisition(self):
         error = self.dll.StartAcquisition()
         self.dll.WaitForAcquisition()
+        self.verbose(ERROR_CODE[error], sys._getframe().f_code.co_name)
         return ERROR_CODE[error]
 
     def GetAcquiredData(self,imageArray):
@@ -71,21 +88,29 @@ class Andor:
         cimageArray = c_int * dim
         cimage = cimageArray()
         error = self.dll.GetAcquiredData(pointer(cimage),dim)
+        self.verbose(ERROR_CODE[error], sys._getframe().f_code.co_name)
 
         for i in range(len(cimage)):
             imageArray.append(cimage[i])
 
         self.imageArray = imageArray[:]
+        self.verbose(ERROR_CODE[error], sys._getframe().f_code.co_name)
         return ERROR_CODE[error]
 
     def SetExposureTime(self, time):
         error = self.dll.SetExposureTime(c_float(time))
+        self.verbose(ERROR_CODE[error], sys._getframe().f_code.co_name)
         return ERROR_CODE[error]
 
     def SetSingleScan(self):
         self.SetReadMode(4)
         self.SetAcquisitionMode(1)
         self.SetImage(1,1,1,self.width,1,self.height)
+
+    def SetCoolerMode(self, mode):
+        error = self.dll.SetCoolerMode(mode)
+        self.verbose(ERROR_CODE[error], sys._getframe().f_code.co_name)
+        return ERROR_CODE[error]
 
     def SaveAsBmp(self, path):
         im=Image.new("RGB",(512,512),"white")
@@ -98,38 +123,73 @@ class Andor:
 
         im.save(path,"BMP")
 
-    def SetTemperature(self,temperature):
-        error = self.dll.SetTemperature(temperature)
-        return ERROR_CODE[error]
+    def SaveAsTxt(self, path):
+        file = open(path, 'w')
+
+        for line in self.imageArray:
+            file.write("%g\n" % line)
+
+        file.close()
+
+    def SetImageRotate(self, iRotate):
+        error = self.dll.SetImageRotate(iRotate)
+        self.verbose(ERROR_CODE[error], sys._getframe().f_code.co_name)
+
+    def SaveAsBmpNormalised(self, path):
+
+        im=Image.new("RGB",(512,512),"white")
+        pix = im.load()
+
+        maxIntensity = max(self.imageArray)
+
+        for i in range(len(self.imageArray)):
+            (row, col) = divmod(i,self.width)
+            picvalue = int(round(self.imageArray[i]*255.0/maxIntensity))
+            pix[row,col] = (picvalue,picvalue,picvalue)
+
+        im.save(path,"BMP")
 
     def CoolerON(self):
         error = self.dll.CoolerON()
+        self.verbose(ERROR_CODE[error], sys._getframe().f_code.co_name)
         return ERROR_CODE[error]
 
     def CoolerOFF(self):
         error = self.dll.CoolerOFF()
+        self.verbose(ERROR_CODE[error], sys._getframe().f_code.co_name)
         return ERROR_CODE[error]
+
+    def IsCoolerOn(self):
+        iCoolerStatus = c_int()
+        error = self.dll.IsCoolerOn(byref(iCoolerStatus))
+        self.verbose(ERROR_CODE[error], sys._getframe().f_code.co_name)
+        return iCoolerStatus
 
     def GetTemperature(self):
         ctemperature = c_int()
         error = self.dll.GetTemperature(byref(ctemperature))
         self.temperature = ctemperature.value
+        self.verbose(ERROR_CODE[error], sys._getframe().f_code.co_name)
         return ERROR_CODE[error]
 
     def SetTemperature(self,temperature):
         #ctemperature = c_int(temperature)
         #error = self.dll.SetTemperature(byref(ctemperature))
         error = self.dll.SetTemperature(temperature)
+        self.set_T = temperature
+        self.verbose(ERROR_CODE[error], sys._getframe().f_code.co_name)
         return ERROR_CODE[error]
 
     def GetEMCCDGain(self):
         gain = c_int()
         error = self.dll.GetEMCCDGain(byref(gain))
         self.gain = gain.value
+        self.verbose(ERROR_CODE[error], sys._getframe().f_code.co_name)
         return ERROR_CODE[error]
 
     def SetEMCCDGain(self, gain):
         error = self.dll.SetEMCCDGain(gain)
+        self.verbose(ERROR_CODE[error], sys._getframe().f_code.co_name)
         return ERROR_CODE[error]
 
     def GetEMGainRange(self):
@@ -137,12 +197,14 @@ class Andor:
         high = c_int()
         error = self.dll.GetEMGainRange(byref(low),byref(high))
         self.gainRange = (low.value, high.value)
+        self.verbose(ERROR_CODE[error], sys._getframe().f_code.co_name)
         return ERROR_CODE[error]
 
     def GetNumberPreAmpGains(self):
         noGains = c_int()
         error = self.dll.GetNumberPreAmpGains(byref(noGains))
         self.noGains = noGains.value
+        self.verbose(ERROR_CODE[error], sys._getframe().f_code.co_name)
         return ERROR_CODE[error]
 
     def GetPreAmpGain(self):
@@ -156,20 +218,25 @@ class Andor:
 
     def SetPreAmpGain(self, index):
         error = self.dll.SetPreAmpGain(index)
+        self.verbose(ERROR_CODE[error], sys._getframe().f_code.co_name)
+        self.preampgain = index
         return ERROR_CODE[error]
 
     def SetTriggerMode(self, mode):
         error = self.dll.SetTriggerMode(mode)
+        self.verbose(ERROR_CODE[error], sys._getframe().f_code.co_name)
         return ERROR_CODE[error]
 
     def GetStatus(self):
         status = c_int()
         error = self.dll.GetStatus(byref(status))
         self.status = ERROR_CODE[status.value]
+        self.verbose(ERROR_CODE[error], sys._getframe().f_code.co_name)
         return ERROR_CODE[error]
 
     def SetOutputAmplifier(self, typ):
         error = self.dll.SetOutputAmplifier(typ)
+        self.verbose(ERROR_CODE[error], sys._getframe().f_code.co_name)
         return ERROR_CODE[error]
 
 ERROR_CODE = {
