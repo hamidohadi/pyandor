@@ -1,0 +1,72 @@
+* 2010-03-25 Hamid Ohadi (hamid.ohadi@gmail.com)
+	Added changelog
+	Added Readme.txt
+
+* 2010-01-27 Kennet Harpsøe <kharpsoe@gmail.com>
+	pyandor.py:
+		New internal variables:
+			self.channel     = None
+			self.outamp      = None
+			self.hsspeed     = None
+			self.vsspeed     = None
+			self.serial      = None
+			self.exposure    = None
+			self.accumulate  = None
+			self.kinetic     = None
+
+		New functions added:
+			* AbortAcquisition
+			* GetCameraSerialNumber
+			* SetNumberKinetics
+			* SetNumberAccumulations
+			* SetAccumulationCycleTime
+			* SetKineticCycleTime
+			* GetAcquisitionTimings
+			* SaveAsFITS
+			* SetEMCCDGainMode
+			* SetEMAdvanced
+			* GetNumberADChannels
+			* GetBitDepth
+			* SetADChannel
+			* GetNumberHSSpeeds
+			* GetHSSpeed
+			* SetHSSpeed
+			* GetNumberVSSpeeds
+			* GetVSSpeed
+			* SetVSSpeed
+			* GetSeriesProgress
+			* GetAccumulationProgress
+			* SetFrameTransferMode
+			* SetShutterEx
+			* SetSpool
+		
+		New error codes:
+
+			"DRV_ERROR_CODES",
+			"DRV_VXNOTINSTALLED",
+			"DRV_ERROR_FILELOAD",
+			"DRV_ERROR_VXD_INIT",
+			"DRV_ERROR_PAGELOCK",
+			"DRV_ERROR_PAGE_UNLOCK",
+			"DRV_NO_NEW_DATA",
+			"DRV_SPOOLERROR",
+			"DRV_COF_NOTLOADED",
+			"DRV_FLEXERROR",
+			"DRV_P2INVALID",
+			"DRV_P3INVALID",
+			"DRV_P4INVALID",
+			"DRV_INIERROR",
+			"DRV_COERROR",
+			"DRV_NOT_INITIALIZED",
+			"DRV_P5INVALID",
+			"DRV_P6INVALID",
+			"P7_INVALID",
+			"DRV_USBERROR",
+			"DRV_NOT_SUPPORTED",
+			"DRV_BINNING_ERROR",
+			"DRV_NOCAMERA",
+			"DRV_NOT_SUPPORTED",
+			"DRV_NOT_AVAILABLE"
+
+* 2009-09-01 Hamid Ohadi (hamid.ohadi@gmail.com)
+	Initial release
