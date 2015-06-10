@@ -15,8 +15,6 @@
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 I have tested this on Linux and Windows machines. You must have the Andor's Linux SDK installed.
-The modules is currently set to run on Windows. For linux set lines 34 and 34 for operating on Linux
-in 'andor.py'.
 
 The actual module is andor.py. There is a small example on how to use it 'simple_example.py'.
 There is also another more useful example with a simple text menu in 'camera.py'. Currently 

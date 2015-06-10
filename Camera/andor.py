@@ -14,6 +14,7 @@
 #   You should have received a copy of the GNU General Public License
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import platform
 from ctypes import *
 from PIL import Image
 import sys
@@ -26,12 +27,21 @@ import sys
 
 class Andor:
     def __init__(self):
-        # for Windows
-        self.dll = CDLL("C:\\Program Files\\Andor SOLIS\\Drivers\\atmcd64d")
 
-        # for linux
-        #cdll.LoadLibrary("/usr/local/lib/libandor.so")
-        #error = self.dll.Initialize("/usr/local/etc/andor/")
+        # Check operating system and load library
+        # for Windows
+        if platform.system() == "Windows":
+            if platform.architecture()[0] == "32bit":
+                self.dll = cdll("C:\\Program Files\\Andor SOLIS\\Drivers\\atmcd32d")
+            else:
+                self.dll = cdll("C:\\Program Files\\Andor SOLIS\\Drivers\\atmcd64d")
+        # for Linux
+        if platform.system() == "Linux":
+            dllname = "/usr/local/lib/libandor.so"
+            self.dll = cdll.LoadLibrary(dllname)
+        else:
+            print "Cannot detect operating system, wil now stop"
+            raise
 
         self.Initialize()
 
