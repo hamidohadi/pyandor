@@ -15,7 +15,6 @@
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from ctypes import *
-import time
 from PIL import Image
 import sys
 
@@ -27,16 +26,22 @@ import sys
 
 class Andor:
     def __init__(self):
+        # for Windows
+        self.dll = CDLL("C:\\Program Files\\Andor SOLIS\\Drivers\\atmcd64d")
+
+        # for linux
         #cdll.LoadLibrary("/usr/local/lib/libandor.so")
-        self.dll = CDLL("/usr/local/lib/libandor.so")
-        error = self.dll.Initialize("/usr/local/etc/andor/")
+        #error = self.dll.Initialize("/usr/local/etc/andor/")
+
+        self.Initialize()
 
         cw = c_int()
         ch = c_int()
         self.dll.GetDetector(byref(cw), byref(ch))
-
+   
+    
         self.width       = cw.value
-        self.height      = cw.value
+        self.height      = ch.value
         self.temperature = None
         self.set_T       = None
         self.gain        = None
@@ -52,9 +57,19 @@ class Andor:
         self.exposure    = None
         self.accumulate  = None
         self.kinetic     = None
+        self.ReadMode    = None
+        self.AcquisitionMode = None
+        self.scans       = 1
+        self.hbin        = 1
+        self.vbin        = 1
+        self.hstart      = 1
+        self.hend        = cw
+        self.vstart      = 1
+        self.vend        = ch
+        self.cooler      = None
         
     def __del__(self):
-		error = self.dll.ShutDown()
+        error = self.dll.ShutDown()
     
     def verbose(self, error, function=''):
         if self.verbosity is True:
@@ -68,6 +83,12 @@ class Andor:
         self.verbose(ERROR_CODE[error], sys._getframe().f_code.co_name)
         return ERROR_CODE[error]
 
+    def Initialize(self):
+        tekst = c_char()  
+        error = self.dll.Initialize(byref(tekst))
+        self.verbose(ERROR_CODE[error], sys._getframe().f_code.co_name)
+        return ERROR_CODE[error]
+        
     def ShutDown(self):
         error = self.dll.ShutDown()
         self.verbose(ERROR_CODE[error], sys._getframe().f_code.co_name)
@@ -81,34 +102,44 @@ class Andor:
         return ERROR_CODE[error]
 
     def SetReadMode(self, mode):
+        #0: Full vertical binning
+        #1: multi track
+        #2: random track
+        #3: single track
+        #4: image
         error = self.dll.SetReadMode(mode)
+        self.ReadMode = mode
         self.verbose(ERROR_CODE[error], sys._getframe().f_code.co_name)
         return ERROR_CODE[error]
 
     def SetAcquisitionMode(self, mode):
+        #1: Single scan
+        #3: Kinetic scan
         error = self.dll.SetAcquisitionMode(mode)
         self.verbose(ERROR_CODE[error], sys._getframe().f_code.co_name)
+        self.AcquisitionMode = mode
         return ERROR_CODE[error]
         
     def SetNumberKinetics(self,numKin):
-		error = self.dll.SetNumberKinetics(numKin)
-		self.verbose(ERROR_CODE[error], sys._getframe().f_code.co_name)
-		return ERROR_CODE[error]
-        
+        error = self.dll.SetNumberKinetics(numKin)
+        self.verbose(ERROR_CODE[error], sys._getframe().f_code.co_name)
+        self.scans = numKin
+        return ERROR_CODE[error]
+
     def SetNumberAccumulations(self,number):
-		error = self.dll.SetNumberAccumulations(number)
-		self.verbose(ERROR_CODE[error], sys._getframe().f_code.co_name)
-		return ERROR_CODE[error]
-        
+        error = self.dll.SetNumberAccumulations(number)
+        self.verbose(ERROR_CODE[error], sys._getframe().f_code.co_name)
+        return ERROR_CODE[error]
+
     def SetAccumulationCycleTime(self,time):
-		error = self.dll.SetAccumulationCycleTime(c_float(time))
-		self.verbose(ERROR_CODE[error], sys._getframe().f_code.co_name)
-		return ERROR_CODE[error]
-        
+        error = self.dll.SetAccumulationCycleTime(c_float(time))
+        self.verbose(ERROR_CODE[error], sys._getframe().f_code.co_name)
+        return ERROR_CODE[error]
+
     def SetKineticCycleTime(self,time):
-		error = self.dll.SetKineticCycleTime(c_float(time))
-		self.verbose(ERROR_CODE[error], sys._getframe().f_code.co_name)
-		return ERROR_CODE[error]
+        error = self.dll.SetKineticCycleTime(c_float(time))
+        self.verbose(ERROR_CODE[error], sys._getframe().f_code.co_name)
+        return ERROR_CODE[error]
 
     def SetShutter(self,typ,mode,closingtime,openingtime):
         error = self.dll.SetShutter(typ,mode,closingtime,openingtime)
@@ -116,18 +147,35 @@ class Andor:
         return ERROR_CODE[error]
 
     def SetImage(self,hbin,vbin,hstart,hend,vstart,vend):
+        self.hbin = hbin
+        self.vbin = vbin
+        self.hstart = hstart
+        self.hend = hend
+        self.vstart = vstart
+        self.vend = vend
+        
         error = self.dll.SetImage(hbin,vbin,hstart,hend,vstart,vend)
         self.verbose(ERROR_CODE[error], sys._getframe().f_code.co_name)
         return ERROR_CODE[error]
 
     def StartAcquisition(self):
         error = self.dll.StartAcquisition()
-        #self.dll.WaitForAcquisition()
+        self.dll.WaitForAcquisition()
         self.verbose(ERROR_CODE[error], sys._getframe().f_code.co_name)
         return ERROR_CODE[error]
 
     def GetAcquiredData(self,imageArray):
-        dim = self.width * self.height
+        if (self.ReadMode==4):
+            if (self.AcquisitionMode==1):
+                dim = self.width * self.height / self.hbin / self.vbin
+            elif (self.AcquisitionMode==3):
+                dim = self.width * self.height / self.hbin / self.vbin * self.scans
+        elif (self.ReadMode==3 or self.ReadMode==0):
+            if (self.AcquisitionMode==1):
+                dim = self.width
+            elif (self.AcquisitionMode==3):
+                dim = self.width * self.scans
+
         cimageArray = c_int * dim
         cimage = cimageArray()
         error = self.dll.GetAcquiredData(pointer(cimage),dim)
@@ -137,11 +185,12 @@ class Andor:
             imageArray.append(cimage[i])
 
         self.imageArray = imageArray[:]
-        self.verbose(ERROR_CODE[error], sys._getframe().f_code.co_name)
+        #self.verbose(ERROR_CODE[error], sys._getframe().f_code.co_name)
         return ERROR_CODE[error]
 
     def SetExposureTime(self, time):
         error = self.dll.SetExposureTime(c_float(time))
+        self.exposure = time
         self.verbose(ERROR_CODE[error], sys._getframe().f_code.co_name)
         return ERROR_CODE[error]
         
@@ -159,7 +208,7 @@ class Andor:
     def SetSingleScan(self):
         self.SetReadMode(4)
         self.SetAcquisitionMode(1)
-        #self.SetImage(1,1,1,self.width,1,self.height)
+        self.SetImage(1,1,1,self.width,1,self.height)
 
     def SetCoolerMode(self, mode):
         error = self.dll.SetCoolerMode(mode)
@@ -167,13 +216,13 @@ class Andor:
         return ERROR_CODE[error]
 
     def SaveAsBmp(self, path):
-        im=Image.new("RGB",(512,512),"white")
+        im=Image.new("RGB",(self.width,self.height),"white")
         pix = im.load()
 
         for i in range(len(self.imageArray)):
             (row, col) = divmod(i,self.width)
             picvalue = int(round(self.imageArray[i]*255.0/65535))
-            pix[row,col] = (picvalue,picvalue,picvalue)
+            pix[col,row] = (picvalue,picvalue,picvalue)
 
         im.save(path,"BMP")
 
@@ -191,7 +240,7 @@ class Andor:
 
     def SaveAsBmpNormalised(self, path):
 
-        im=Image.new("RGB",(512,512),"white")
+        im=Image.new("RGB",(self.width,self.height),"white")
         pix = im.load()
 
         maxIntensity = max(self.imageArray)
@@ -199,7 +248,7 @@ class Andor:
         for i in range(len(self.imageArray)):
             (row, col) = divmod(i,self.width)
             picvalue = int(round(self.imageArray[i]*255.0/maxIntensity))
-            pix[row,col] = (picvalue,picvalue,picvalue)
+            pix[col,row] = (picvalue,picvalue,picvalue)
 
         im.save(path,"BMP")
         
@@ -210,16 +259,19 @@ class Andor:
 
     def CoolerON(self):
         error = self.dll.CoolerON()
+        self.cooler = 1
         self.verbose(ERROR_CODE[error], sys._getframe().f_code.co_name)
         return ERROR_CODE[error]
 
     def CoolerOFF(self):
         error = self.dll.CoolerOFF()
+        self.cooler = 0
         self.verbose(ERROR_CODE[error], sys._getframe().f_code.co_name)
         return ERROR_CODE[error]
 
     def IsCoolerOn(self):
         iCoolerStatus = c_int()
+        self.cooler = iCoolerStatus
         error = self.dll.IsCoolerOn(byref(iCoolerStatus))
         self.verbose(ERROR_CODE[error], sys._getframe().f_code.co_name)
         return iCoolerStatus.value
@@ -313,8 +365,8 @@ class Andor:
             self.dll.GetHSSpeed(self.channel, self.outamp, i, byref(HSSpeed))
             self.HSSpeeds.append(HSSpeed.value)
             
-    def SetHSSpeed(self, index):
-        error = self.dll.SetHSSpeed(index)
+    def SetHSSpeed(self, itype, index):
+        error = self.dll.SetHSSpeed(itype,index)
         self.verbose(ERROR_CODE[error], sys._getframe().f_code.co_name)
         self.hsspeed = index
         return ERROR_CODE[error]
@@ -373,7 +425,7 @@ class Andor:
         error = self.dll.GetStatus(byref(status))
         self.status = ERROR_CODE[status.value]
         self.verbose(ERROR_CODE[error], sys._getframe().f_code.co_name)
-        return ERROR_CODE[error]
+        return self.status
         
     def GetSeriesProgress(self):
 		acc = c_long()
@@ -407,6 +459,28 @@ class Andor:
         error = self.dll.SetSpool(active, method, c_char_p(path), framebuffersize)
         self.verbose(ERROR_CODE[error], sys._getframe().f_code.co_name)
         return ERROR_CODE[error]
+
+    def SetSingleTrack(self, centre, height):
+        error = self.dll.SetSingleTrack(centre, height)
+        self.verbose(ERROR_CODE[error], sys._getframe().f_code.co_name)
+        return ERROR_CODE[error]
+    
+    def SetDemoReady(self):
+        error = self.SetSingleScan()
+        error = self.SetTriggerMode(0)
+        error = self.SetShutter(1,0,30,30)
+        error = self.SetExposureTime(0.01)
+        return error
+    
+    def SetBinning(self,binningmode):
+        if (binningmode==1):
+            self.SetImage(1,1,1,self.width,1,self.height)
+        elif (binningmode==2):
+            self.SetImage(2,2,1,self.width,1,self.height)
+        elif (binningmode==4):
+            self.SetImage(4,4,1,self.width,1,self.height)
+        else:
+            self.verbose("Binning mode not found")
 
 ERROR_CODE = {
     20001: "DRV_ERROR_CODES",
@@ -443,6 +517,7 @@ ERROR_CODE = {
     20083: "P7_INVALID",
     20089: "DRV_USBERROR",
     20091: "DRV_NOT_SUPPORTED",
+    20095: "DRV_INVALID_TRIGGER_MODE",
     20099: "DRV_BINNING_ERROR",
     20990: "DRV_NOCAMERA",
     20991: "DRV_NOT_SUPPORTED",

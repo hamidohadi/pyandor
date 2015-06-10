@@ -1,3 +1,21 @@
+* 2015-06-10 Hamid Ohadi (hamid.ohadi@gmail) and Felix Benz (fb400@cam.ac.uk)
+	pyandor.py:
+		Modified GetAcquiredData() to support binning, kinetics, and accumulate
+		Added SetSingleTrack()
+		Added SetDemoReady()
+		Added SetBinning()
+		Added new internal variables:
+			self.ReadMode    = None
+			self.AcquisitionMode = None
+			self.scans       = None
+			self.hbin        = 1
+			self.vbin        = 1
+			self.hstart      = 1
+			self.hend        = cw
+			self.vstart      = 1
+			self.vend        = ch
+			self.cooler      = None
+
 * 2010-03-25 Hamid Ohadi (hamid.ohadi@gmail.com)
 	Added changelog
 	Added Readme.txt
