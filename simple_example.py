@@ -8,7 +8,7 @@ import signal
 #####################
 
 Tset = -70
-EMCCDGain = 250
+EMCCDGain = 1
 PreAmpGain = 0
 
 def signal_handler(signal, frame):
@@ -25,7 +25,7 @@ cam.SetTriggerMode(7)
 cam.SetShutter(1,1,0,0)
 cam.SetPreAmpGain(PreAmpGain)
 cam.SetEMCCDGain(EMCCDGain)
-cam.SetExposureTime(0.1)
+cam.SetExposureTime(0.01)
 cam.SetCoolerMode(1)
 
 cam.SetTemperature(Tset)
