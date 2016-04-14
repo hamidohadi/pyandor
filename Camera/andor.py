@@ -224,6 +224,14 @@ class Andor:
         error = self.dll.SetCoolerMode(mode)
         self.verbose(ERROR_CODE[error], sys._getframe().f_code.co_name)
         return ERROR_CODE[error]
+        
+    def SetFanMode(self, mode):
+        #0: fan on full
+        #1: fan on low
+        #2: fna off
+        error = self.dll.SetFanMode(mode)
+        self.verbose(ERROR_CODE[error], sys._getframe().f_code.co_name)
+        return ERROR_CODE[error]
 
     def SaveAsBmp(self, path):
         im=Image.new("RGB",(self.width,self.height),"white")
